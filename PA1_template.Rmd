@@ -8,18 +8,143 @@ output:
 
 ## Loading and preprocessing the data
 
+To load the data use this code:
 
+```{r loading and preprocesing, echo=TRUE}
+
+data<-read.csv(unz("activity.zip",filename = "activity.csv"))
+
+```
 
 ## What is mean total number of steps taken per day?
 
+1. The total number of steps taken per day is
+```{r mean total number, echo=TRUE}
+ts<-tapply(data$steps,data$date,sum,na.rm=TRUE)
+
+```
+
+2. the  histogram of the total number of steps taken each day is:
+
+```{r histogram, echo=TRUE}
+
+hist(ts)
+
+```
+
+3. the mean and median are:
+
+```{r mean and median,echo=TRUE, results="asis"}
+
+mean_ts<-mean(ts)
+median_ts<-median(ts)
+df<-data.frame(mean_ts,median_ts)
+names(df)<-c("mean","median")
+
+library(xtable)
+print(xtable(df),type = "html")
+
+```
 
 
 ## What is the average daily activity pattern?
 
+1- the time series plot for the average number of steps taken averaged across all days is:
+
+```{r time serie,echo=TRUE}
+
+tsa<-tapply(data$steps,data$interval,mean,na.rm=TRUE)
+interval<-data$interval[1:288]
+
+plot(interval,tsa,type = "l")
+
+```
+
+2. the 5-minute interval whit the maximum number of sterp is:
+
+```{r maximun in 5 minute interval, echo=TRUE}
+
+interval[which.max(tsa)]
+
+```
 
 
 ## Imputing missing values
 
+the total number of missing values in the dataset is:
+
+```{r missing values,echo=TRUE}
+
+sum(is.na(data$steps))
+
+```
+
+to replace the missing values we are going to use the 5-minute intervale average, thus:
+
+```{r replace missing values,echo=TRUE}
+
+library(dplyr)
+data2<-data
+
+impute<-function(x,fun){
+        missing<-is.na(x)
+        replace(x,missing,fun(x[!missing]))
+}
+
+data2<-data %>% group_by(interval) %>% mutate(steps=impute(steps,mean))
+```
+
+
+
+The new total number of steps taken per day is
+ 
+```{r mean total number2, echo=TRUE}
+ts2<-tapply(data2$steps,data2$date,sum,na.rm=TRUE)
+
+```
+
+the new histogram of the total number of steps taken each day is:
+
+```{r histogram2, echo=TRUE}
+
+hist(ts2)
+
+```
+
+the new mean and median are:
+
+```{r mean and median 2,echo=TRUE, results="asis"}
+
+mean_ts2<-mean(ts2)
+median_ts2<-median(ts2)
+df2<-data.frame(mean_ts2,median_ts2)
+names(df2)<-c("mean","median")
+
+library(xtable)
+print(xtable(df2),type = "html")
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Creating factor variable weekday or weekend
+
+```{r creating factor,echo=TRUE}
+
+data2$date <- as.Date(data2$date)
+weekdays1 <- c("lunes", "martes", "miércoles", "jueves", "viernes")
+
+data2$wDay <- factor((weekdays(data2$date) %in% weekdays1), levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+
+```
+
+
+```{r plot,echo=TRUE}
+
+library(lattice)
+
+data3<-data2 %>% group_by(wDay,interval) %>% summarize(mean=mean(steps))
+
+xyplot(mean~interval | wDay,data = data3,layout=c(1,2), type="l")
+
+```
